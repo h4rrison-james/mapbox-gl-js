@@ -1,6 +1,6 @@
 // @flow
 
-import { Event } from '../util/evented';
+import {Event} from '../util/evented';
 
 import DOM from '../util/dom';
 import Point from '@mapbox/point-geometry';
@@ -163,11 +163,10 @@ export class MapTouchEvent extends Event {
             return prev.add(curr.div(arr.length));
         }, new Point(0, 0));
         const lngLat = map.unproject(point);
-        super(type, { points, point, lngLats, lngLat, originalEvent });
+        super(type, {points, point, lngLats, lngLat, originalEvent});
         this._defaultPrevented = false;
     }
 }
-
 
 /**
  * `MapWheelEvent` is the event type for the `wheel` map event.
@@ -211,12 +210,15 @@ export class MapWheelEvent extends Event {
      * @private
      */
     constructor(type: string, map: Map, originalEvent: WheelEvent) {
-        super(type, { originalEvent });
+        super(type, {originalEvent});
         this._defaultPrevented = false;
     }
 }
 
 /**
+ * A `MapBoxZoomEvent` is the event type for boxzoom-related map events.
+ * `originalEvent` can be a {@link Map.event:click} when the zoom is triggered by a UI event.
+ *
  * @typedef {Object} MapBoxZoomEvent
  * @property {MouseEvent} originalEvent
  */

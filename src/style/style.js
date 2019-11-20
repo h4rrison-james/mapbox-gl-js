@@ -2,7 +2,7 @@
 
 import assert from 'assert';
 
-import { Event, ErrorEvent, Evented } from '../util/evented';
+import {Event, ErrorEvent, Evented} from '../util/evented';
 import StyleLayer from './style_layer';
 import createStyleLayer from './create_style_layer';
 import loadSprite from './load_sprite';
@@ -10,18 +10,18 @@ import ImageManager from '../render/image_manager';
 import GlyphManager from '../render/glyph_manager';
 import Light from './light';
 import LineAtlas from '../render/line_atlas';
-import { pick, clone, extend, deepEqual, filterObject, mapObject } from '../util/util';
-import { getJSON, getReferrer, makeRequest, ResourceType } from '../util/ajax';
-import { isMapboxURL } from '../util/mapbox';
+import {pick, clone, extend, deepEqual, filterObject, mapObject} from '../util/util';
+import {getJSON, getReferrer, makeRequest, ResourceType} from '../util/ajax';
+import {isMapboxURL} from '../util/mapbox';
 import browser from '../util/browser';
 import Dispatcher from '../util/dispatcher';
-import { validateStyle, emitValidationErrors as _emitValidationErrors } from './validate_style';
+import {validateStyle, emitValidationErrors as _emitValidationErrors} from './validate_style';
 import {
     getType as getSourceType,
     setType as setSourceType,
     type SourceClass
 } from '../source/source';
-import { queryRenderedFeatures, queryRenderedSymbols, querySourceFeatures } from '../source/query_features';
+import {queryRenderedFeatures, queryRenderedSymbols, querySourceFeatures} from '../source/query_features';
 import SourceCache from '../source/source_cache';
 import GeoJSONSource from '../source/geojson_source';
 import styleSpec from '../style-spec/reference/latest';
@@ -195,7 +195,6 @@ class Style extends Evented {
 
         url = this.map._requestManager.normalizeStyleURL(url, options.accessToken);
         const request = this.map._requestManager.transformRequest(url, ResourceType.Style);
-
         this._request = getJSON(request, (error: ?Error, json: ?Object) => {
             this._request = null;
             if (error) {
@@ -239,6 +238,7 @@ class Style extends Evented {
                 }
 
                 this.imageManager.setLoaded(true);
+                this.dispatcher.broadcast('setImages', this.imageManager.listImages());
                 this.fire(new Event('data', {dataType: 'style'}));
             });
         } else {
@@ -257,7 +257,6 @@ class Style extends Evented {
             layer.setEventedParent(this, {layer: {id: layer.id}});
             this._layers[layer.id] = layer;
         }
-
         this.dispatcher.broadcast('setLayers', this._serializeLayers(this._order));
 
         this.light = new Light(this.stylesheet.light);
@@ -383,7 +382,7 @@ class Style extends Evented {
         for (const layerId of this._order) {
             const layer = this._layers[layerId];
 
-            layer.recalculate(parameters);
+            layer.recalculate(parameters, this.imageManager.listImages());
             if (!layer.isHidden(parameters.zoom) && layer.source) {
                 this.sourceCaches[layer.source].used = true;
             }
@@ -917,7 +916,7 @@ class Style extends Evented {
     }
 
     getTransition() {
-        return extend({ duration: 300, delay: 0 }, this.stylesheet && this.stylesheet.transition);
+        return extend({duration: 300, delay: 0}, this.stylesheet && this.stylesheet.transition);
     }
 
     serialize() {
@@ -1144,9 +1143,16 @@ class Style extends Evented {
             this._spriteRequest = null;
         }
         rtlTextPluginEvented.off('pluginAvailable', this._rtlTextPluginCallback);
+        for (const layerId in this._layers) {
+            const layer: StyleLayer = this._layers[layerId];
+            layer.setEventedParent(null);
+        }
         for (const id in this.sourceCaches) {
             this.sourceCaches[id].clearTiles();
+            this.sourceCaches[id].setEventedParent(null);
         }
+        this.imageManager.setEventedParent(null);
+        this.setEventedParent(null);
         this.dispatcher.remove();
     }
 
@@ -1201,7 +1207,7 @@ class Style extends Evented {
         // tiles will fully display symbols in their first frame
         const forceFullPlacement = this._layerOrderChanged || fadeDuration === 0;
 
-        if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(browser.now()))) {
+        if (forceFullPlacement || !this.pauseablePlacement || (this.pauseablePlacement.isDone() && !this.placement.stillRecent(browser.now(), transform.zoom))) {
             this.pauseablePlacement = new PauseablePlacement(transform, this._order, forceFullPlacement, showCollisionBoxes, fadeDuration, crossSourceCollisions, this.placement);
             this._layerOrderChanged = false;
         }

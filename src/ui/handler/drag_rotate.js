@@ -2,10 +2,10 @@
 
 import DOM from '../../util/dom';
 
-import { bezier, bindAll } from '../../util/util';
+import {bezier, bindAll} from '../../util/util';
 import window from '../../util/window';
 import browser from '../../util/browser';
-import { Event } from '../../util/evented';
+import {Event} from '../../util/evented';
 import assert from 'assert';
 
 import type Map from '../map';
@@ -152,10 +152,10 @@ class DragRotateHandler {
         // fall outside the map canvas element. Use `{capture: true}` for the move event
         // to prevent map move events from being fired during a drag.
         if (touchEvent) {
-            window.document.addEventListener('touchmove', this._onMouseMove, { capture: true });
+            window.document.addEventListener('touchmove', this._onMouseMove, {capture: true});
             window.document.addEventListener('touchend', this._onMouseUp);
         } else {
-            window.document.addEventListener('mousemove', this._onMouseMove, { capture: true });
+            window.document.addEventListener('mousemove', this._onMouseMove, {capture: true});
             window.document.addEventListener('mouseup', this._onMouseUp);
         }
 
@@ -213,13 +213,19 @@ class DragRotateHandler {
         this._drainInertiaBuffer();
         inertia.push([browser.now(), this._map._normalizeBearing(bearing, last[1])]);
 
+        const prevBearing = tr.bearing;
         tr.bearing = bearing;
         if (this._pitchWithRotate) {
-            this._fireEvent('pitch', e);
+            const prevPitch = tr.pitch;
             tr.pitch = pitch;
+            if (tr.pitch !== prevPitch) {
+                this._fireEvent('pitch', e);
+            }
         }
 
-        this._fireEvent('rotate', e);
+        if (tr.bearing !== prevBearing) {
+            this._fireEvent('rotate', e);
+        }
         this._fireEvent('move', e);
 
         delete this._lastMoveEvent;
@@ -275,9 +281,9 @@ class DragRotateHandler {
     }
 
     _unbind() {
-        window.document.removeEventListener('mousemove', this._onMouseMove, { capture: true });
+        window.document.removeEventListener('mousemove', this._onMouseMove, {capture: true});
         window.document.removeEventListener('mouseup', this._onMouseUp);
-        window.document.removeEventListener('touchmove', this._onMouseMove, { capture: true });
+        window.document.removeEventListener('touchmove', this._onMouseMove, {capture: true});
         window.document.removeEventListener('touchend', this._onMouseUp);
         window.removeEventListener('blur', this._onBlur);
         DOM.enableDrag();
@@ -304,7 +310,7 @@ class DragRotateHandler {
 
         const finish = () => {
             if (Math.abs(mapBearing) < this._bearingSnap) {
-                map.resetNorth({noMoveStart: true}, { originalEvent: e });
+                map.resetNorth({noMoveStart: true}, {originalEvent: e});
             } else {
                 this._fireEvent('moveend', e);
             }
@@ -347,11 +353,11 @@ class DragRotateHandler {
             duration: duration * 1000,
             easing: inertiaEasing,
             noMoveStart: true
-        }, { originalEvent: e });
+        }, {originalEvent: e});
     }
 
     _fireEvent(type: string, e: *) {
-        return this._map.fire(new Event(type, e ? { originalEvent: e } : {}));
+        return this._map.fire(new Event(type, e ? {originalEvent: e} : {}));
     }
 
     _drainInertiaBuffer() {

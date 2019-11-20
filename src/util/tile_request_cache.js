@@ -1,6 +1,6 @@
 // @flow
 
-import { parseCacheControl } from './util';
+import {warnOnce, parseCacheControl} from './util';
 import window from './window';
 
 import type Dispatcher from './dispatcher';
@@ -16,7 +16,6 @@ export type ResponseOptions = {
     statusText: string,
     headers: window.Headers
 };
-
 
 let responseConstructorSupportsReadableStream;
 function prepareBody(response: Response, callback) {
@@ -61,7 +60,9 @@ export function cachePut(request: Request, response: Response, requestTime: numb
     prepareBody(response, body => {
         const clonedResponse = new window.Response(body, options);
 
-        window.caches.open(CACHE_NAME).then(cache => cache.put(stripQueryParameters(request.url), clonedResponse));
+        window.caches.open(CACHE_NAME)
+            .then(cache => cache.put(stripQueryParameters(request.url), clonedResponse))
+            .catch(e => warnOnce(e.message));
     });
 }
 
@@ -73,28 +74,30 @@ function stripQueryParameters(url: string) {
 export function cacheGet(request: Request, callback: (error: ?any, response: ?Response, fresh: ?boolean) => void) {
     if (!window.caches) return callback(null);
 
+    const strippedURL = stripQueryParameters(request.url);
+
     window.caches.open(CACHE_NAME)
-        .catch(callback)
         .then(cache => {
-            cache.match(request, { ignoreSearch: true })
-                .catch(callback)
+            // manually strip URL instead of `ignoreSearch: true` because of a known
+            // performance issue in Chrome https://github.com/mapbox/mapbox-gl-js/issues/8431
+            cache.match(strippedURL)
                 .then(response => {
                     const fresh = isFresh(response);
 
                     // Reinsert into cache so that order of keys in the cache is the order of access.
                     // This line makes the cache a LRU instead of a FIFO cache.
-                    const strippedURL = stripQueryParameters(request.url);
                     cache.delete(strippedURL);
                     if (fresh) {
                         cache.put(strippedURL, response.clone());
                     }
 
                     callback(null, response, fresh);
-                });
-        });
+                })
+                .catch(callback);
+        })
+        .catch(callback);
+
 }
-
-
 
 function isFresh(response) {
     if (!response) return false;
@@ -102,7 +105,6 @@ function isFresh(response) {
     const cacheControl = parseCacheControl(response.headers.get('Cache-Control') || '');
     return expires > Date.now() && !cacheControl['no-cache'];
 }
-
 
 // `Infinity` triggers a cache check after the first tile is loaded
 // so that a check is run at least once on each page load.
@@ -116,7 +118,7 @@ let globalEntryCounter = Infinity;
 export function cacheEntryPossiblyAdded(dispatcher: Dispatcher) {
     globalEntryCounter++;
     if (globalEntryCounter > cacheCheckThreshold) {
-        dispatcher.send('enforceCacheSizeLimit', cacheLimit);
+        dispatcher.getActor().send('enforceCacheSizeLimit', cacheLimit);
         globalEntryCounter = 0;
     }
 }

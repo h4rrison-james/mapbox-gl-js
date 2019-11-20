@@ -6,9 +6,9 @@ import DOM from '../../util/dom';
 import { ease as _ease, bindAll, bezier, cssTransformPoint } from '../../util/util';
 import browser from '../../util/browser';
 import window from '../../util/window';
-import { number as interpolate } from '../../style-spec/util/interpolate';
+import {number as interpolate} from '../../style-spec/util/interpolate';
 import LngLat from '../../geo/lng_lat';
-import { Event } from '../../util/evented';
+import {Event} from '../../util/evented';
 
 import type Map from '../map';
 import type Point from '@mapbox/point-geometry';
@@ -110,7 +110,6 @@ class ScrollZoomHandler {
     isActive() {
         return !!this._active;
     }
-
 
     isZooming() {
         return !!this._zooming;
